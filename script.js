@@ -20,4 +20,25 @@
 
 //! Valid Session check
 /* -> if response is forbiddem - invalid then refresh
-*/
+ */
+
+// ==================================
+// imports
+const { qBittorent } = require("./qbt")
+require("dotenv").config()
+
+async function handler(func) {
+   try {
+      const data = await func()
+      return [data, null]
+   } catch (err) {
+      return [null, err]
+   }
+}
+
+async function startService() {
+   try {
+   } catch (error) {}
+}
+
+startService()

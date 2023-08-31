@@ -1,16 +1,18 @@
-//*TORRENT SEARCH FLOW
+//* TORRENT SEARCH FLOW
 /* Pre : fetch title and metadata from notion in currently watching (still need to think reg. the filter)
--> initial working data: title, type, ?seasonepisode
--> movie: search for movie name and year (specific pattern "Name Year Quality")
-    -start search
-    -stop search after 5 seconds?
-    -get results and sort them by seed/peers ratio? wont work always as sometimes ratio < 1 
+-> //? Movie
+-> search for movie name and year (specific pattern "Name Year Quality")
+   -start search
+   -stop search after x seconds?
+   -get results and sort them by seed/peers ratio? wont work always as sometimes ratio < 1 
         -SORTING
             -order by no of seeds 
-    -add torrent 
-        -check sequentional optionm, first last parts option
-        -set the download dir to plex dir
-        -add 
+      -add torrent 
+      -check sequentional optionm, first last parts option
+      -set the download dir to plex dir D:\\Media\\Movies
+      -Add to current downloading torrents obj with key: tmdb id and value: name of the torrent
+      -add torrent to download
+      -after x time or upon download init, replace value with the hash of the torrent in the active torrent obj 
 */
 //! Duplicate check
 /* Prevent duplicate titles getting downloaded
@@ -26,19 +28,3 @@
 // imports
 const { qBittorent } = require("./qbt")
 require("dotenv").config()
-
-async function handler(func) {
-   try {
-      const data = await func()
-      return [data, null]
-   } catch (err) {
-      return [null, err]
-   }
-}
-
-async function startService() {
-   try {
-   } catch (error) {}
-}
-
-startService()

@@ -37,57 +37,75 @@ module.exports.qBittorent = class {
 
    /**
     * Starts torrrent search
-    * @param {string} searchpattern - string to search torrents for
-    * @return {number} - id of the search
+    * @param {string} pattern - string to search torrents for
+    * @return {Promise<number>} id - id of the search
     */
-   async initSearch(searchpattern) {
-      const res = await this.#post("api/v2/search/start", { pattern: searchpattern, plugins: "enabled", category: "all" })
-      if (res.data.id) {
-         return res.data.id
-      } else {
-         return false
-      }
+   async initSearch(pattern) {
+      const res = await this.#post("api/v2/search/start", { pattern: pattern, plugins: "enabled", category: "all" })
+      return res.data.id
    }
 
    /**
     * Stops torrrent search
-    * @param {number} sid - search id
+    * @param {number} id - search id
     */
-   async stopSearch(sid) {
-      await this.#post("api/v2/search/stop", { id: sid })
-      return
+   async stopSearch(id) {
+      await this.#post("api/v2/search/stop", { id: id })
    }
 
    /**
     * Deletes torrrent search
-    * @param {number} sid - search id
+    * @param {number} id - search id
     */
-   async stopSearch(sid) {
-      await this.#post("api/v2/search/delete", { id: sid })
-      return
+   async deleteSearch(id) {
+      await this.#post("api/v2/search/delete", { id: id })
    }
 
    /**
-    * Fetch torrrent search results
-    * @param {number} sid - search id
-    * @param {number} slimit - search results limit, 0 => no limit
-    * @return {object} - object containing search results, status and count of results
+    * Get torrrent search results
+    * @param {number} id - search id
+    * @param {number} limit - search results limit, 0 => no limit
+    * @return {Promise<object>} searchResults - object containing search results, status and count of results
     */
-   async fetchSearchResults(sid, slimit = 0) {
-      const res = await this.#get("api/v2/search/results", { id: sid, limit: slimit })
-      return res
+   async getSearchResults(id, limit = 0) {
+      const res = await this.#get("api/v2/search/results", { id: id, limit: limit })
+      return res.data
    }
 
    /**
     * Add torrrent to download
-    * @param {string} url - URLs separated with newlines
-    * @param {string} path - Download folder
-    * @param {string} rootFolder - Create the root folder. Possible values are true, false, unset (default)
-    * @param {string} seqDownload - Enable sequential download. Possible values are true, false (default)
-    * @param {string} firstLastPriority - Prioritize download first last piece. Possible values are true, false (default)
+    * @param {string} urls - URLs separated with newlines
+    * @param {string} savepath - Download folder
+    * @param {string} root_folder - Create the root folder. Possible values are true, false, unset (default)
+    * @param {string} sequentialDownload - Enable sequential download. Possible values are true, false (default)
+    * @param {string} firstLastPiecePrio - Prioritize download first last piece. Possible values are true, false (default)
+    * @param {string} rename - Rename torrent
+    * @return {Promise<boolean>} success - true/false
     */
-   async addTorrentDownload(url, path, rootFolder = "true", seqDownload = "true", firstLastPriority = "true") {
-      const res = await this.#post("api/v2/torrents/add", { urls: url, savepath: path, root_folder: rootFolder, sequentialDownload: seqDownload, firstLastPiecePrio: firstLastPriority })
-      return
+   async addTorrentDownload(urls, savepath, root_folder = "true", sequentialDownload = "true", firstLastPiecePrio = "true", rename) {
+      const res = await this.#post("api/v2/torrents/add", { urls: urls, savepath: savepath, root_folder: root_folder, sequentialDownload: sequentialDownload, firstLastPiecePrio: firstLastPiecePrio, rename: rename })
+      if (res.data == "Ok.") return true
+      return false
+   }
+
+   /**
+    * Get torrrent Hash
+    * @param {string} name - Name of the torrent to fetch hash of
+    * @param {string} filter - Filter torrent list by state. Allowed state filters: all, downloading, seeding, completed, paused, active, inactive, resumed, stalled, stalled_uploading, stalled_downloading, errored
+    * @return {Promise<string>} hash - Hash of the torrent
+    */
+   async getTorrentHash(name, filter = "downloading") {
+      const res = await this.#get("api/v2/torrents/info", { filter: filter })
+      const torrents = res.data
+      return torrents.filter((torrent) => torrent.name === name)[0].hash
+   }
+
+   /**
+    * Delete torrrent
+    * @param {string} hashes - Hash of torrent to delete
+    * @param {string} deleteFiles - If set to true, the downloaded data will also be deleted, otherwise has no effect.
+    */
+   async deleteTorrent(hashes, deleteFiles = "false") {
+      await this.#post("api/v2/torrents/delete", { hashes: hashes, deleteFiles: deleteFiles })
    }
 }

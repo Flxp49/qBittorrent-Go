@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"time"
 )
 
 func getJson(body []byte, target interface{}) error {
@@ -204,22 +203,5 @@ func InitqBittorrent(username string, password string, host string) *qBittorent 
 }
 
 func main() {
-	// InitqBittorrent("admin", "flxp49", "http://localhost:3030")
-	q := InitqBittorrent("admin", "flxp49", "http://localhost:3030")
-	id, _ := q.initSearch("ToyStory")
-	fmt.Println(id)
-	// fmt.Println(q.stopSearch(id))
-	time.Sleep(8 * time.Second)
-	// q go func
-	d, _ := q.searchJobResults(id, 0)
-	fmt.Println(d.Status)
-	fmt.Println(d.Total)
-	fmt.Println(d.Results[0].DescrLink)
-	fmt.Println(d.Results[0].FileName)
-	fmt.Println(d.Results[0].FileSize)
-	fmt.Println(d.Results[0].FileUrl)
-	fmt.Println(d.Results[0].NbLeechers)
-	fmt.Println(d.Results[0].NbSeeders)
-	fmt.Println(d.Results[0].SiteUrl)
-
+	fmt.Printf("Hello")
 }

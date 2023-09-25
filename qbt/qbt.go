@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 func getJson(body []byte, target interface{}) error {
@@ -14,14 +15,21 @@ func getJson(body []byte, target interface{}) error {
 }
 
 type qBittorent struct {
-	username string
-	password string
-	host     string
-	req      *http.Request
-	// cookieTime time.
+	username       string
+	password       string
+	host           string
+	req            *http.Request
+	cookieTime     time.Time
+	sessionTimeout time.Duration
 }
 
 func (q *qBittorent) performReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
+	if time.Since(q.cookieTime) >= q.sessionTimeout {
+		err := q.requestAuth()
+		if err != nil {
+			return nil, nil, err
+		}
+	}
 	q.req.Method = method
 	q.req.URL, _ = url.Parse(q.host + "/" + endpoint)
 	if method == "POST" {
@@ -43,19 +51,25 @@ func (q *qBittorent) performReq(method string, endpoint string, data []byte) (*h
 	return resp, body, nil
 }
 
-func (q *qBittorent) requestAuth() (bool, error) {
+func (q *qBittorent) requestAuth() error {
 
 	data := []byte(fmt.Sprintf("username=%s&password=%s", q.username, q.password))
+	req, _ := http.NewRequest("POST", q.host+"/"+"api/v2/auth/login", bytes.NewBuffer(data))
+	req.Header.Add("Referer", q.host)
+	req.Header.Add("Host", q.host)
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	res, _, err := q.performReq("POST", "api/v2/auth/login", data)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return false, err
+		return err
 	}
-	if len(res.Cookies()) != 0 {
-		q.req.AddCookie(res.Cookies()[0])
-		return true, nil
+	resp.Body.Close()
+	if len(resp.Cookies()) != 0 {
+		q.req.AddCookie(resp.Cookies()[0])
+		q.cookieTime = time.Now()
+		return nil
 	}
-	return false, err
+	return err
 }
 
 // initSearch: start search job result struct
@@ -66,7 +80,7 @@ type initSearch struct {
 // Starts torrent search and returns id of the search job
 //
 // pattern - string to search torrents by
-func (q *qBittorent) initSearch(pattern string) (int, error) {
+func (q *qBittorent) InitSearch(pattern string) (int, error) {
 	data := []byte(fmt.Sprintf("pattern=%s&plugins=enabled&category=all", pattern))
 	_, body, err := q.performReq("POST", "api/v2/search/start", data)
 	if err != nil {
@@ -83,7 +97,7 @@ func (q *qBittorent) initSearch(pattern string) (int, error) {
 // Stops torrent search job
 //
 // id - search id of search job to stop
-func (q *qBittorent) stopSearch(id int) error {
+func (q *qBittorent) StopSearch(id int) error {
 	data := []byte(fmt.Sprintf("id=%d", id))
 	_, _, err := q.performReq("POST", "api/v2/search/stop", data)
 	return err
@@ -92,7 +106,7 @@ func (q *qBittorent) stopSearch(id int) error {
 // Deletes torrrent search
 //
 // id - search id of search job to delete
-func (q *qBittorent) deleteSearch(id int) error {
+func (q *qBittorent) DeleteSearch(id int) error {
 	data := []byte(fmt.Sprintf("id=%d", id))
 	_, _, err := q.performReq("POST", "api/v2/search/delete", data)
 	return err
@@ -118,7 +132,7 @@ type searchJobResults struct {
 // id - search id
 //
 // limit - search results limit, 0 => no limit
-func (q *qBittorent) searchJobResults(id int, limit int) (*searchJobResults, error) {
+func (q *qBittorent) SearchJobResults(id int, limit int) (*searchJobResults, error) {
 	data := []byte(fmt.Sprintf("id=%d", id))
 	_, body, err := q.performReq("POST", "api/v2/search/results", data)
 	if err != nil {
@@ -138,12 +152,12 @@ func (q *qBittorent) searchJobResults(id int, limit int) (*searchJobResults, err
 //
 // savepath - Download folder
 //
-// root_folder - Create the root folder. Possible values are true, false, unset (default)
+// root_folder - Create the root folder. Possible values are true, false
 //
-// sequentialDownload - Enable sequential download. Possible values are true, false (default)
+// sequentialDownload - Enable sequential download. Possible values are true
 //
-// firstLastPiecePrio - Prioritize download first last piece. Possible values are true, false (default)
-func (q *qBittorent) addTorrentDownload(urls string, savepath string, root_folder string, sequentialDownload string, firstLastPiecePrio string) error {
+// firstLastPiecePrio - Prioritize download first last piece. Possible values are true
+func (q *qBittorent) AddTorrentDownload(urls string, savepath string, root_folder string, sequentialDownload string, firstLastPiecePrio string) error {
 	data := []byte(fmt.Sprintf("urls=%s&savepath=%s&root_folder=%s&sequentialDownload=%s&firstLastPiecePrio=%s", urls, savepath, root_folder, sequentialDownload, firstLastPiecePrio))
 	_, _, err := q.performReq("POST", "api/v2/torrents/add", data)
 	return err
@@ -160,7 +174,7 @@ type getTorrentHashResult []struct {
 // name - Name of the torrent to fetch hash of
 //
 // filter - Filter torrent list by state. Allowed state filters: all, downloading, seeding, completed, paused, active, inactive, resumed, stalled, stalled_uploading, stalled_downloading, errored
-func (q *qBittorent) getTorrentHash(name string, filter string) (string, error) {
+func (q *qBittorent) GetTorrentHash(name string, filter string) (string, error) {
 	url := fmt.Sprintf("api/v2/torrents/info?filter=%s", filter)
 	_, body, err := q.performReq("GET", url, nil)
 	if err != nil {
@@ -185,19 +199,22 @@ func (q *qBittorent) getTorrentHash(name string, filter string) (string, error) 
 // hashes - Hash of torrent to delete
 //
 // deleteFiles - If set to true, the downloaded data will also be deleted, otherwise has no effect
-func (q *qBittorent) deleteTorrent(hashes string, deletefiles string) error {
+func (q *qBittorent) DeleteTorrent(hashes string, deletefiles string) error {
 	data := []byte(fmt.Sprintf("hashes=%s", hashes))
 	_, _, err := q.performReq("POST", "api/v2/torrents/delete", data)
 	return err
 }
 
 // constructor
-func InitqBittorrent(username string, password string, host string) *qBittorent {
-	q := &qBittorent{username: username, password: password, host: host}
+func InitqBittorrent(username string, password string, host string, timeout int) (*qBittorent, error) {
+	q := &qBittorent{username: username, password: password, host: host, sessionTimeout: time.Second * time.Duration(timeout)}
 	q.req, _ = http.NewRequest("", "", nil)
+	err := q.requestAuth()
+	if err != nil {
+		return nil, err
+	}
 	q.req.Header.Add("Referer", q.host)
 	q.req.Header.Add("Host", q.host)
 	q.req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	q.requestAuth()
-	return q
+	return q, nil
 }

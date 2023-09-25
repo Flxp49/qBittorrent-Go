@@ -9,10 +9,13 @@ import (
 )
 
 func main() {
-	fmt.Printf("Hello")
 	if godotenv.Load("../.env") != nil {
 		fmt.Printf("Error loading env file")
 		os.Exit(1)
 	}
-	qbt.InitqBittorrent(os.Getenv("user"), os.Getenv("pass"), "http://localhost:3030")
+	_, err := qbt.InitqBittorrent(os.Getenv("qbituser"), os.Getenv("qbitpass"), "http://localhost:3030", 3600)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }

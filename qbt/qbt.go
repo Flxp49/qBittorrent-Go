@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func getJson(body []byte, target interface{}) error {
+func parseJson(body []byte, target interface{}) error {
 	return json.Unmarshal(body, target)
 }
 
@@ -87,7 +87,7 @@ func (q *qBittorent) InitSearch(pattern string) (int, error) {
 		return -1, err
 	}
 	var sji initSearch
-	err = getJson(body, &sji)
+	err = parseJson(body, &sji)
 	if err != nil {
 		return -1, err
 	}
@@ -139,7 +139,7 @@ func (q *qBittorent) SearchJobResults(id int, limit int) (*searchJobResults, err
 		return nil, err
 	}
 	var sjr searchJobResults
-	err = getJson(body, &sjr)
+	err = parseJson(body, &sjr)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func (q *qBittorent) GetTorrentHash(name string, filter string) (string, error) 
 		return "", err
 	}
 	var gthr getTorrentHashResult
-	err = getJson(body, &gthr)
+	err = parseJson(body, &gthr)
 	if err != nil {
 		return "", err
 	}

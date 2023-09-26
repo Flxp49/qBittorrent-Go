@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Flxp49/qbittorrent-notionwatchlist-sync/notion"
 	"github.com/Flxp49/qbittorrent-notionwatchlist-sync/qbt"
 	"github.com/joho/godotenv"
 )
@@ -18,4 +19,5 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+	_ = notion.InitNotionClient("Emad", os.Getenv("emadIntegSecret"), os.Getenv("emadDBID"))
 }

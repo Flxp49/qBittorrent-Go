@@ -45,10 +45,20 @@ func (n *notionClient) performReq(method string, endpoint string, data []byte) (
 // QueryDB Response struct
 type queryDB struct {
 	Results []struct {
-		Id         string `json:"id"`
+		Pgid       string `json:"id"`
 		Properties struct {
-			ID struct {
+			Tmdbid struct {
 				Number int `json:"number"`
+			} `json:"ID"`
+			Name struct {
+				Title []struct {
+					Plain_text string `json:"plain_text"`
+				} `json:"title"`
+			}
+			Year struct {
+				Rich_text []struct {
+					Plain_text string `json:"plain_text"`
+				} `json:"rich_text"`
 			}
 		} `json:"properties"`
 	} `json:"results"`

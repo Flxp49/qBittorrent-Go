@@ -22,9 +22,11 @@
 
 //! Valid Session check
 /* -> if response is forbiddem - invalid then refresh
- */
+*/
 
 // ==================================
-// imports
-const { qBittorent } = require("./qbt")
-require("dotenv").config()
+Pageid: id of the movie page (updates to be done against this page)
+tmdb id: to avoid redundancy
+torrent hash: torrent id
+
+need to link tmdb id with torrent hash and page id

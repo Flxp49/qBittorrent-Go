@@ -194,6 +194,30 @@ func (q *qBittorent) GetTorrentHash(name string, filter string) (string, error) 
 	return "", nil
 }
 
+// getTorrentHashResult: torrent hash result struct
+type GetTorrentInfoResult []struct {
+	Progress float64 `json:"progress"`
+}
+
+//	Get torrent info by hash, returns torrent progress
+//
+// name - Name of the torrent to fetch hash of
+//
+// filter - Filter torrent list by state. Allowed state filters: all, downloading, seeding, completed, paused, active, inactive, resumed, stalled, stalled_uploading, stalled_downloading, errored
+func (q *qBittorent) GetTorrentInfo(hash string) (float64, error) {
+	url := fmt.Sprintf("api/v2/torrents/info?hashes=%s", hash)
+	_, body, err := q.performReq("GET", url, nil)
+	if err != nil {
+		return 0, err
+	}
+	var gtir GetTorrentInfoResult
+	err = parseJson(body, &gtir)
+	if err != nil {
+		return 0, err
+	}
+	return gtir[0].Progress, nil
+}
+
 // Delete torrrent by hash
 //
 // hashes - Hash of torrent to delete

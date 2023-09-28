@@ -132,18 +132,18 @@ type searchJobResults struct {
 // id - search id
 //
 // limit - search results limit, 0 => no limit
-func (q *qBittorent) SearchJobResults(id int, limit int) (*searchJobResults, error) {
+func (q *qBittorent) SearchJobResults(id int, limit int) (searchJobResults, error) {
 	data := []byte(fmt.Sprintf("id=%d", id))
 	_, body, err := q.performReq("POST", "api/v2/search/results", data)
 	if err != nil {
-		return nil, err
+		return searchJobResults{}, err
 	}
 	var sjr searchJobResults
 	err = parseJson(body, &sjr)
 	if err != nil {
-		return nil, err
+		return searchJobResults{}, err
 	}
-	return &sjr, nil
+	return sjr, nil
 }
 
 // Add torrrent to download
@@ -194,9 +194,10 @@ func (q *qBittorent) GetTorrentHash(name string, filter string) (string, error) 
 	return "", nil
 }
 
-// getTorrentHashResult: torrent hash result struct
+// GetTorrentInfoResult: torrent info result struct
 type GetTorrentInfoResult []struct {
 	Progress float64 `json:"progress"`
+	State    string  `json:"state"`
 }
 
 //	Get torrent info by hash, returns torrent progress
@@ -204,18 +205,18 @@ type GetTorrentInfoResult []struct {
 // name - Name of the torrent to fetch hash of
 //
 // filter - Filter torrent list by state. Allowed state filters: all, downloading, seeding, completed, paused, active, inactive, resumed, stalled, stalled_uploading, stalled_downloading, errored
-func (q *qBittorent) GetTorrentInfo(hash string) (float64, error) {
+func (q *qBittorent) GetTorrentInfo(hash string) (GetTorrentInfoResult, error) {
 	url := fmt.Sprintf("api/v2/torrents/info?hashes=%s", hash)
 	_, body, err := q.performReq("GET", url, nil)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	var gtir GetTorrentInfoResult
 	err = parseJson(body, &gtir)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return gtir[0].Progress, nil
+	return gtir, nil
 }
 
 // Delete torrrent by hash

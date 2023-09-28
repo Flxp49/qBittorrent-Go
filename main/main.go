@@ -45,11 +45,11 @@ func main() {
 			q.AddTorrentDownload(res.Results[0].FileUrl, "D:\\Media\\Movies", "true", "true", "true")
 			thash, _ := q.GetTorrentHash(res.Results[0].FileName, "all")
 			m[t.Properties.Tmdbid.Number] = info{pageid: t.Pgid, title: t.Properties.Name.Title[0].Plain_text, year: t.Properties.Year.Rich_text[0].Plain_text, ttype: "movie", hash: thash, torrentName: res.Results[0].FileName}
-			n.UpdateDownloadStatus(t.Pgid, "In progress", 0)
-			time.Sleep(time.Second * 20)
 			prog, _ := q.GetTorrentInfo(thash)
-			log.Println(prog)
-			n.UpdateDownloadStatus(t.Pgid, "In progress", float64(int(prog*100))/100)
+			n.UpdateDownloadStatus(t.Pgid, prog[0].State, float64(int(prog[0].Progress*100))/100)
+			time.Sleep(time.Second * 15)
+			prog, _ = q.GetTorrentInfo(thash)
+			n.UpdateDownloadStatus(t.Pgid, prog[0].State, float64(int(prog[0].Progress*100))/100)
 		}
 	}
 }

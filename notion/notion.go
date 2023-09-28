@@ -43,7 +43,7 @@ func (n *notionClient) performReq(method string, endpoint string, data []byte) (
 }
 
 // QueryDB Response struct
-type queryDB struct {
+type QueryDB struct {
 	Results []struct {
 		Pgid       string `json:"id"`
 		Properties struct {
@@ -69,9 +69,6 @@ type QueryDBPayload struct {
 	Filter struct {
 		And []struct {
 			Property string `json:"property"`
-			Status   *struct {
-				Equals string `json:"equals"`
-			} `json:"status,omitempty"`
 			Checkbox *struct {
 				Equals bool `json:"equals"`
 			} `json:"checkbox,omitempty"`
@@ -85,14 +82,11 @@ type QueryDBPayload struct {
 // This funtion returns the list of tmdb ids and pageids that are checked as downlaod
 //
 // status - fetch records with download status as "Not started", "In progress" or "Done"
-func (n *notionClient) QueryDB(status string) (*queryDB, error) {
+func (n *notionClient) QueryDB(status string) (QueryDB, error) {
 	payload := QueryDBPayload{
 		Filter: struct {
 			And []struct {
 				Property string `json:"property"`
-				Status   *struct {
-					Equals string `json:"equals"`
-				} `json:"status,omitempty"`
 				Checkbox *struct {
 					Equals bool `json:"equals"`
 				} `json:"checkbox,omitempty"`
@@ -103,9 +97,6 @@ func (n *notionClient) QueryDB(status string) (*queryDB, error) {
 		}{
 			And: []struct {
 				Property string `json:"property"`
-				Status   *struct {
-					Equals string `json:"equals"`
-				} `json:"status,omitempty"`
 				Checkbox *struct {
 					Equals bool `json:"equals"`
 				} `json:"checkbox,omitempty"`
@@ -113,14 +104,14 @@ func (n *notionClient) QueryDB(status string) (*queryDB, error) {
 					Equals string `json:"equals"`
 				} `json:"select,omitempty"`
 			}{
-				{
-					Property: "Download Status",
-					Status: &struct {
-						Equals string `json:"equals"`
-					}{
-						Equals: status,
-					},
-				},
+				// {
+				// 	Property: "Download Status",
+				// 	Select: &struct {
+				// 		Equals string `json:"equals"`
+				// 	}{
+				// 		Equals: status,
+				// 	},
+				// },
 				{
 					Property: "Type",
 					Select: &struct {
@@ -143,23 +134,51 @@ func (n *notionClient) QueryDB(status string) (*queryDB, error) {
 	data, _ := json.Marshal(payload)
 	_, body, err := n.performReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
 	if err != nil {
-		return nil, err
+		return QueryDB{}, err
 	}
-	var qDb queryDB
+	var qDb QueryDB
 	err = parseJson(body, &qDb)
 	if err != nil {
-		return nil, err
+		return QueryDB{}, err
 	}
-	return &qDb, nil
+	return qDb, nil
+}
+
+type statusMap struct {
+	name  string
+	color string
+}
+
+var sMap = map[string]statusMap{
+	"error":              {name: "🔴 Error", color: "red"},
+	"missingFiles":       {name: "🔴 Missing files", color: "red"},
+	"uploading":          {name: "🟢 Downloaded", color: "green"},
+	"pausedUP":           {name: "🟢 Downloaded", color: "green"},
+	"queuedUP":           {name: "🟢 Downloaded", color: "green"},
+	"stalledUP":          {name: "🟢 Downloaded", color: "green"},
+	"checkingUP":         {name: "🟢 Downloaded", color: "green"},
+	"forcedUP":           {name: "🟢 Downloaded", color: "green"},
+	"allocating":         {name: "🟡 Allocating", color: "yellow"},
+	"downloading":        {name: "🔵 Downloading", color: "blue"},
+	"metaDL":             {name: "🟡 Downloading metadata", color: "yellow"},
+	"pausedDL":           {name: "🟠 Paused", color: "orange"},
+	"queuedDL":           {name: "🟡 Queued", color: "yellow"},
+	"stalledDL":          {name: "🟠 Stalled", color: "orange"},
+	"checkingDL":         {name: "🟡 Checking download", color: "yellow"},
+	"forcedDL":           {name: "🔵 Downloading", color: "blue"},
+	"checkingResumeData": {name: "🟡 Checking resume data", color: "yellow"},
+	"moving":             {name: "🟡 Moving ", color: "yellow"},
+	"unknown":            {name: "⭕ Unknown ", color: "gray"},
 }
 
 // Payload struct for UpdateDownloadStatus
 type UpdateDownloadStatus struct {
 	Properties struct {
 		DStatus struct {
-			Status struct {
-				Name string `json:"name"`
-			} `json:"status"`
+			Select struct {
+				Name  string `json:"name"`
+				Color string `json:"color"`
+			} `json:"select"`
 		} `json:"Download Status"`
 		Dprogress struct {
 			Number float64 `json:"number"`
@@ -177,23 +196,27 @@ type UpdateDownloadStatus struct {
 func (n *notionClient) UpdateDownloadStatus(id string, status string, val float64) error {
 	UpdateDownloadStatus := UpdateDownloadStatus{Properties: struct {
 		DStatus struct {
-			Status struct {
-				Name string `json:"name"`
-			} `json:"status"`
+			Select struct {
+				Name  string `json:"name"`
+				Color string `json:"color"`
+			} `json:"select"`
 		} `json:"Download Status"`
 		Dprogress struct {
 			Number float64 `json:"number"`
 		} `json:"Download Progress"`
 	}{
 		DStatus: struct {
-			Status struct {
-				Name string `json:"name"`
-			} `json:"status"`
+			Select struct {
+				Name  string `json:"name"`
+				Color string `json:"color"`
+			} `json:"select"`
 		}{
-			Status: struct {
-				Name string `json:"name"`
+			Select: struct {
+				Name  string `json:"name"`
+				Color string `json:"color"`
 			}{
-				Name: status,
+				Name:  sMap[status].name,
+				Color: sMap[status].color,
 			},
 		},
 		Dprogress: struct {

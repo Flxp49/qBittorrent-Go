@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 )
 
@@ -14,16 +15,19 @@ func parseJson(body []byte, target interface{}) error {
 	return json.Unmarshal(body, target)
 }
 
-type qBittorent struct {
+type QBittorent struct {
 	username       string
 	password       string
 	host           string
 	req            *http.Request
 	cookieTime     time.Time
 	sessionTimeout time.Duration
+	lock           *sync.Mutex
 }
 
-func (q *qBittorent) performReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
+func (q *QBittorent) performReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
+	q.lock.Lock()
+	defer q.lock.Unlock()
 	if time.Since(q.cookieTime) >= q.sessionTimeout {
 		err := q.requestAuth()
 		if err != nil {
@@ -51,7 +55,7 @@ func (q *qBittorent) performReq(method string, endpoint string, data []byte) (*h
 	return resp, body, nil
 }
 
-func (q *qBittorent) requestAuth() error {
+func (q *QBittorent) requestAuth() error {
 
 	data := []byte(fmt.Sprintf("username=%s&password=%s", q.username, q.password))
 	req, _ := http.NewRequest("POST", q.host+"/"+"api/v2/auth/login", bytes.NewBuffer(data))
@@ -80,7 +84,7 @@ type initSearch struct {
 // Starts torrent search and returns id of the search job
 //
 // pattern - string to search torrents by
-func (q *qBittorent) InitSearch(pattern string) (int, error) {
+func (q *QBittorent) InitSearch(pattern string) (int, error) {
 	data := []byte(fmt.Sprintf("pattern=%s&plugins=enabled&category=all", pattern))
 	_, body, err := q.performReq("POST", "api/v2/search/start", data)
 	if err != nil {
@@ -97,7 +101,7 @@ func (q *qBittorent) InitSearch(pattern string) (int, error) {
 // Stops torrent search job
 //
 // id - search id of search job to stop
-func (q *qBittorent) StopSearch(id int) error {
+func (q *QBittorent) StopSearch(id int) error {
 	data := []byte(fmt.Sprintf("id=%d", id))
 	_, _, err := q.performReq("POST", "api/v2/search/stop", data)
 	return err
@@ -106,7 +110,7 @@ func (q *qBittorent) StopSearch(id int) error {
 // Deletes torrrent search
 //
 // id - search id of search job to delete
-func (q *qBittorent) DeleteSearch(id int) error {
+func (q *QBittorent) DeleteSearch(id int) error {
 	data := []byte(fmt.Sprintf("id=%d", id))
 	_, _, err := q.performReq("POST", "api/v2/search/delete", data)
 	return err
@@ -132,7 +136,7 @@ type searchJobResults struct {
 // id - search id
 //
 // limit - search results limit, 0 => no limit
-func (q *qBittorent) SearchJobResults(id int, limit int) (searchJobResults, error) {
+func (q *QBittorent) SearchJobResults(id int, limit int) (searchJobResults, error) {
 	data := []byte(fmt.Sprintf("id=%d", id))
 	_, body, err := q.performReq("POST", "api/v2/search/results", data)
 	if err != nil {
@@ -157,7 +161,7 @@ func (q *qBittorent) SearchJobResults(id int, limit int) (searchJobResults, erro
 // sequentialDownload - Enable sequential download. Possible values are true
 //
 // firstLastPiecePrio - Prioritize download first last piece. Possible values are true
-func (q *qBittorent) AddTorrentDownload(urls string, savepath string, root_folder string, sequentialDownload string, firstLastPiecePrio string) error {
+func (q *QBittorent) AddTorrentDownload(urls string, savepath string, root_folder string, sequentialDownload string, firstLastPiecePrio string) error {
 	data := []byte(fmt.Sprintf("urls=%s&savepath=%s&root_folder=%s&sequentialDownload=%s&firstLastPiecePrio=%s", urls, savepath, root_folder, sequentialDownload, firstLastPiecePrio))
 	_, _, err := q.performReq("POST", "api/v2/torrents/add", data)
 	return err
@@ -174,7 +178,7 @@ type getTorrentHashResult []struct {
 // name - Name of the torrent to fetch hash of
 //
 // filter - Filter torrent list by state. Allowed state filters: all, downloading, seeding, completed, paused, active, inactive, resumed, stalled, stalled_uploading, stalled_downloading, errored
-func (q *qBittorent) GetTorrentHash(name string, filter string) (string, error) {
+func (q *QBittorent) GetTorrentHash(name string, filter string) (string, error) {
 	url := fmt.Sprintf("api/v2/torrents/info?filter=%s", filter)
 	_, body, err := q.performReq("GET", url, nil)
 	if err != nil {
@@ -205,7 +209,7 @@ type GetTorrentInfoResult []struct {
 // name - Name of the torrent to fetch hash of
 //
 // filter - Filter torrent list by state. Allowed state filters: all, downloading, seeding, completed, paused, active, inactive, resumed, stalled, stalled_uploading, stalled_downloading, errored
-func (q *qBittorent) GetTorrentInfo(hash string) (GetTorrentInfoResult, error) {
+func (q *QBittorent) GetTorrentInfo(hash string) (GetTorrentInfoResult, error) {
 	url := fmt.Sprintf("api/v2/torrents/info?hashes=%s", hash)
 	_, body, err := q.performReq("GET", url, nil)
 	if err != nil {
@@ -224,15 +228,15 @@ func (q *qBittorent) GetTorrentInfo(hash string) (GetTorrentInfoResult, error) {
 // hashes - Hash of torrent to delete
 //
 // deleteFiles - If set to true, the downloaded data will also be deleted, otherwise has no effect
-func (q *qBittorent) DeleteTorrent(hashes string, deletefiles string) error {
+func (q *QBittorent) DeleteTorrent(hashes string, deletefiles string) error {
 	data := []byte(fmt.Sprintf("hashes=%s", hashes))
 	_, _, err := q.performReq("POST", "api/v2/torrents/delete", data)
 	return err
 }
 
 // constructor
-func InitqBittorrent(username string, password string, host string, timeout int) (*qBittorent, error) {
-	q := &qBittorent{username: username, password: password, host: host, sessionTimeout: time.Second * time.Duration(timeout)}
+func InitqBittorrent(username string, password string, host string, timeout int, lock *sync.Mutex) (*QBittorent, error) {
+	q := &QBittorent{username: username, password: password, host: host, sessionTimeout: time.Second * time.Duration(timeout), lock: lock}
 	q.req, _ = http.NewRequest("", "", nil)
 	err := q.requestAuth()
 	if err != nil {

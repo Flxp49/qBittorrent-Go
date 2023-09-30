@@ -9,7 +9,7 @@ import (
 	"net/url"
 )
 
-type notionClient struct {
+type NotionClient struct {
 	user   string
 	secret string
 	dbid   string
@@ -20,7 +20,7 @@ func parseJson(body []byte, target interface{}) error {
 	return json.Unmarshal(body, target)
 }
 
-func (n *notionClient) performReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
+func (n *NotionClient) performReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
 	n.req.Method = method
 	n.req.URL, _ = url.Parse("https://api.notion.com" + "/" + endpoint)
 	if method == "POST" || method == "PATCH" {
@@ -82,7 +82,7 @@ type QueryDBPayload struct {
 // This funtion returns the list of tmdb ids and pageids that are checked as downlaod
 //
 // status - fetch records with download status as "Not started", "In progress" or "Done"
-func (n *notionClient) QueryDB(status string) (QueryDB, error) {
+func (n *NotionClient) QueryDB(status string) (QueryDB, error) {
 	payload := QueryDBPayload{
 		Filter: struct {
 			And []struct {
@@ -193,7 +193,7 @@ type UpdateDownloadStatus struct {
 // status - "Not started" or "In progress" or "Done"
 //
 // val - Download progress [0,1]
-func (n *notionClient) UpdateDownloadStatus(id string, status string, val float64) error {
+func (n *NotionClient) UpdateDownloadStatus(id string, status string, val float64) error {
 	UpdateDownloadStatus := UpdateDownloadStatus{Properties: struct {
 		DStatus struct {
 			Select struct {
@@ -239,8 +239,8 @@ func (n *notionClient) UpdateDownloadStatus(id string, status string, val float6
 }
 
 // constructor
-func InitNotionClient(username string, secret string, dbid string) *notionClient {
-	n := &notionClient{user: username, secret: secret, dbid: dbid}
+func InitNotionClient(username string, secret string, dbid string) *NotionClient {
+	n := &NotionClient{user: username, secret: secret, dbid: dbid}
 	n.req, _ = http.NewRequest("", "", nil)
 	n.req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", n.secret))
 	n.req.Header.Add("Notion-Version", "2022-06-28")

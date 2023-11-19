@@ -1,2 +1,2 @@
-# qbittorrent-notionwatchlist-sync
-Sync NotionWatchlist with qBittorrent 
+# qBittorrent-Go
+Wrapper around qBittorrent's Web API (limited as of now)
